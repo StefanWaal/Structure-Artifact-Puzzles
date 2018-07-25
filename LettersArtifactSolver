@@ -1,0 +1,121 @@
+from string import ascii_uppercase
+
+def createLetterDict (combinations):
+    '''
+    Input: all the green combinations that appear in the puzzle
+    Output: a dictionary with all 26 letters. Every letter is a key to its own dictionary.
+    That dictionary has two keys:
+    - nextLetters, which is a list of all letters that follow the letter in a combination
+    - previousLetters, which is a list of all letters that precede the letter in a combination
+    '''
+    
+    letterDict = {}
+    
+    # Create the skeleton of the dictionary
+    for letter in ascii_uppercase:
+        letterDict[letter] = {"nextLetters": [], "previousLetters": []}
+    
+    # Fill the dictionary
+    for combination in combinations:
+        letterDict[combination[0]]["nextLetters"].append(combination[1])
+        letterDict[combination[1]]["previousLetters"].append(combination[0])
+    
+    return(letterDict)
+
+def findFirstAndLast (letterDict):
+    '''
+    Input: the letterDict
+    Output: a list that has two items:
+    - All the letters that are certainly at the start of a chain
+    - All the letters that are certainly at the end of a chain
+    '''
+    
+    firstLetters = []
+    lastLetters = []
+    
+    for letter in letterDict:
+        if len(letterDict[letter]["nextLetters"]) > len(letterDict[letter]["previousLetters"]):
+            firstLetters.append(letter)
+        elif len(letterDict[letter]["nextLetters"]) < len(letterDict[letter]["previousLetters"]):
+            lastLetters.append(letter)
+    
+    return [firstLetters, lastLetters]
+
+def extendChainForward(letterDict, letter):
+    '''
+    Input: the letterDict and the letter that's the start of the chain
+    Output: the chain that starts with the chosen letter and ends at a split or a dead end
+    '''
+    chain = letter
+    currentLetter = letter
+    nextLetter = letterDict[currentLetter]["nextLetters"][0]
+    while len(letterDict[nextLetter]["nextLetters"]) == 1:
+        chain += nextLetter
+        letterDict[currentLetter]["nextLetters"].remove(nextLetter)
+        letterDict[nextLetter]["previousLetters"].remove(currentLetter)
+        currentLetter = nextLetter
+        nextLetter = letterDict[currentLetter]["nextLetters"][0]
+    chain += nextLetter
+    letterDict[currentLetter]["nextLetters"].remove(nextLetter)
+    letterDict[nextLetter]["previousLetters"].remove(currentLetter)
+    return chain
+
+def extendChainBackwards(letterDict, letter):
+    '''
+    Input: the letterDict and the letter that's the end of the chain
+    Output: the chain that ends with the chosen letter and starts at a split or a dead start (is a dead start a thing?)
+    '''
+    currentChain = letter
+    currentLetter = letter
+    previousLetter = letterDict[currentLetter]["previousLetters"][0]
+    while len(letterDict[previousLetter]["previousLetters"]) == 1:
+        currentChain = previousLetter + currentChain
+        letterDict[currentLetter]["previousLetters"].remove(previousLetter)
+        letterDict[previousLetter]["nextLetters"].remove(currentLetter)
+        currentLetter = previousLetter
+        previousLetter = letterDict[currentLetter]["previousLetters"][0]
+    currentChain = previousLetter + currentChain
+    letterDict[currentLetter]["previousLetters"].remove(previousLetter)
+    letterDict[previousLetter]["nextLetters"].remove(currentLetter)
+    return currentChain
+
+def findChains (letterDict):
+    '''
+    Input: the letterDict
+    Output: it changes the info from letterDict into a series of chains
+    '''
+    
+    firstAndLast = findFirstAndLast(letterDict)
+    chains = []
+    
+    # Find all the chains that start with a first letter
+    for firstLetter in firstAndLast[0]:
+        while len(letterDict[firstLetter]["nextLetters"]) >= 1:
+            chains.append(extendChainForward(letterDict, firstLetter))
+    
+    # Find all the chains that start with a lastLetter
+    for lastLetter in firstAndLast[1]:
+        while len(letterDict[lastLetter]["previousLetters"]) >= 1:
+            chains.append(extendChainBackwards(letterDict, lastLetter))
+    
+    # Find all remaining chains
+    for letter in letterDict:
+        if len(letterDict[letter]["nextLetters"]) >= 1:
+            # Keep extending the chain forward
+            chain = extendChainForward(letterDict, letter)
+            
+            #Keep extending the chain backwards
+            if len(letterDict[letter]["previousLetters"]) == 1:
+                chain = extendChainBackwards(letterDict, lastLetter)[:-1] + chain
+            
+            chains.append(chain)
+    
+    return chains
+
+def solveLettersArtifactPuzzle (combinations):
+    letterDict = createLetterDict(combinations)
+    chains = findChains(letterDict)
+    
+    print(chains)
+    
+solveLettersArtifactPuzzle(["BC", "CD", "DE", "ED", "DB", "BA", "AF", "FG", "GF", "FH"])
